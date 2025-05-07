@@ -1,40 +1,66 @@
-require('dotenv').config(); // Load environment variables from .env file
+// server.js
+require('dotenv').config();   
 
-// server
-// This is a simple Express server that connects to MongoDB and serves a REST API for managing tasks.
-// It uses Mongoose for MongoDB interactions and serves static files from the 'public' directory.
-const express = require('express');
-const mongoose = require('mongoose');
-const path = require('path');
+const express      = require('express');
+const mongoose     = require('mongoose');
+const path         = require('path');
+const authRoutes   = require('./routes/auth');
+const authMiddleware = require('./middleware/auth');
 
 const app = express();
 
-// Middleware
+// 2) Middleware for JSON & static files
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// MongoDB connection
+// 3) Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI)
-.then(() => console.log('✅ MongoDB connected'))
-.catch(err => console.error('❌ MongoDB error:', err));
+  .then(() => console.log('✅ MongoDB connected'))
+  .catch(err => console.error('❌ MongoDB error:', err));
 
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+// 4) Mount auth routes (un-protected)
+app.use('/api', authRoutes);  // exposes POST /api/signup and POST /api/login
 
-// Task model
+// 5) Task model (with owner field)
 const taskSchema = new mongoose.Schema({
-    text: String,
-    completed: { type: Boolean, default: false }, 
+  text: String,
+  completed: { type: Boolean, default: false },
+  owner:   { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
 }, { timestamps: true });
 
 const Task = mongoose.model('Task', taskSchema);
 
-// Routes
-app.get(   '/api/tasks',           async (req, res) => { res.json(await Task.find()); });
-app.post(  '/api/tasks',           async (req, res) => { res.status(201).json(await Task.create({ text: req.body.text })); });
-app.put(   '/api/tasks/:id',       async (req, res) => { res.json(await Task.findByIdAndUpdate(req.params.id, req.body, { new: true })); });
-app.delete('/api/tasks/:id',       async (req, res) => { await Task.findByIdAndDelete(req.params.id); res.status(204).end(); });
+// 6) Protect everything under /api/tasks
+app.use('/api/tasks', authMiddleware);
 
-// Server
+// 7) Define your CRUD routes _once_ under /api/tasks
+app.get('/api/tasks', async (req, res) => {
+  const tasks = await Task.find({ owner: req.user.id });
+  res.json(tasks);
+});
+
+app.post('/api/tasks', async (req, res) => {
+  const newTask = await Task.create({
+    text:  req.body.text,
+    owner: req.user.id
+  });
+  res.status(201).json(newTask);
+});
+
+app.put('/api/tasks/:id', async (req, res) => {
+  const updated = await Task.findOneAndUpdate(
+    { _id: req.params.id, owner: req.user.id },
+    req.body,
+    { new: true }
+  );
+  res.json(updated);
+});
+
+app.delete('/api/tasks/:id', async (req, res) => {
+  await Task.findOneAndDelete({ _id: req.params.id, owner: req.user.id });
+  res.status(204).end();
+});
+
+// 8) Start server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
