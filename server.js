@@ -1,6 +1,5 @@
 // server.js
-require('dotenv').config();       // 1) load .env
-
+require('dotenv').config();
 const express        = require('express');
 const mongoose       = require('mongoose');
 const path           = require('path');
@@ -9,67 +8,60 @@ const authMiddleware = require('./middleware/auth');
 
 const app = express();
 
-// 2) JSON body parsing
+// parse JSON bodies
 app.use(express.json());
 
-// 3) Un-protected auth endpoints
-//    → POST /api/signup
-//    → POST /api/login
+// 1) auth endpoints (unprotected)
 app.use('/api', authRoutes);
 
-// 4) Connect to MongoDB
+// 2) connect to Mongo
 mongoose
-  .connect(process.env.MONGODB_URI, {
-    // these options are now defaults in mongoose 6+, but harmless to leave
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
+  .connect(process.env.MONGODB_URI)
   .then(() => console.log('✅ MongoDB connected'))
   .catch(err => console.error('❌ MongoDB connection error:', err));
 
-// 5) Task schema + model
+// 3) task model
 const taskSchema = new mongoose.Schema({
   text:      String,
   completed: { type: Boolean, default: false },
-  owner:     { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-}, { timestamps: true });
-
+  owner:     { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
+},{ timestamps: true });
 const Task = mongoose.model('Task', taskSchema);
 
-// 6) Protect everything under /api/tasks
+// 4) protect all /api/tasks
 app.use('/api/tasks', authMiddleware);
 
-// 7) CRUD routes for tasks
+// 5) CRUD
 app.get('/api/tasks',       async (req, res) => {
   const tasks = await Task.find({ owner: req.user.id });
   res.json(tasks);
 });
 app.post('/api/tasks',      async (req, res) => {
-  const newTask = await Task.create({ text: req.body.text, owner: req.user.id });
-  res.status(201).json(newTask);
+  const t = await Task.create({ text: req.body.text, owner: req.user.id });
+  res.status(201).json(t);
 });
 app.put('/api/tasks/:id',   async (req, res) => {
-  const updated = await Task.findOneAndUpdate(
+  const u = await Task.findOneAndUpdate(
     { _id: req.params.id, owner: req.user.id },
     req.body,
     { new: true }
   );
-  res.json(updated);
+  res.json(u);
 });
 app.delete('/api/tasks/:id', async (req, res) => {
   await Task.findOneAndDelete({ _id: req.params.id, owner: req.user.id });
   res.sendStatus(204);
 });
 
-// 8) Serve React’s production build
+// 6) serve your React build
 const clientDist = path.join(__dirname, 'client', 'dist');
 app.use(express.static(clientDist));
 
-// 9) “Catch-all” to send back index.html for client‐side routing
+// 7) catch‐all for client‐side routing
 app.get('*', (req, res) => {
   res.sendFile(path.join(clientDist, 'index.html'));
 });
 
-// 10) Launch
+// 8) start
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Server listening on ${PORT}`));
