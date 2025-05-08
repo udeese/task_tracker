@@ -1,39 +1,32 @@
 // server.js
-require('dotenv').config();   
+require('dotenv').config();
 
-const express      = require('express');
-const mongoose     = require('mongoose');
-const path         = require('path');
-const authRoutes   = require('./routes/auth');
+const express        = require('express');
+const mongoose       = require('mongoose');
+const path           = require('path');
+const authRoutes     = require('./routes/auth');
 const authMiddleware = require('./middleware/auth');
 
 const app = express();
 
-// 2) Middleware for JSON & static files
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
 
-// 3) Connect to MongoDB
+
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('✅ MongoDB connected'))
   .catch(err => console.error('❌ MongoDB error:', err));
 
-// 4) Mount auth routes (un-protected)
-app.use('/api', authRoutes);  // exposes POST /api/signup and POST /api/login
 
-// 5) Task model (with owner field)
-const taskSchema = new mongoose.Schema({
-  text: String,
-  completed: { type: Boolean, default: false },
-  owner:   { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
-}, { timestamps: true });
+app.use('/api', authRoutes);  // POST /api/signup, POST /api/login
 
-const Task = mongoose.model('Task', taskSchema);
-
-// 6) Protect everything under /api/tasks
 app.use('/api/tasks', authMiddleware);
 
-// 7) Define your CRUD routes _once_ under /api/tasks
+const Task = mongoose.model('Task', new mongoose.Schema({
+  text:      String,
+  completed: { type: Boolean, default: false },
+  owner:     { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
+}, { timestamps: true }));
+
 app.get('/api/tasks', async (req, res) => {
   const tasks = await Task.find({ owner: req.user.id });
   res.json(tasks);
@@ -58,9 +51,15 @@ app.put('/api/tasks/:id', async (req, res) => {
 
 app.delete('/api/tasks/:id', async (req, res) => {
   await Task.findOneAndDelete({ _id: req.params.id, owner: req.user.id });
-  res.status(204).end();
+  res.sendStatus(204);
 });
 
-// 8) Start server
+const clientDist = path.join(__dirname, 'client/dist');
+app.use(express.static(clientDist));
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(clientDist, 'index.html'));
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
