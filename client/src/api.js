@@ -1,16 +1,19 @@
 // src/api.js
 import axios from 'axios';
 
+const baseURL = import.meta.env.DEV
+  ? 'http://localhost:3000/api'
+  : '/api';
+  
 export const api = axios.create({
-  baseURL: '/api',
-  headers: { 'Content-Type': 'application/json' }
+baseURL: '/api',
+headers: { 'Content-Type': 'application/json' }
 });
 
-// Call this when your token changes (in AuthContext)
 export function setAuthHeader(token) {
-  if (token) {
+if (token) {
     api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-  } else {
+} else {
     delete api.defaults.headers.common['Authorization'];
-  }
+}
 }

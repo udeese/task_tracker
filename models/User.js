@@ -1,7 +1,5 @@
-// This file defines the User model for the application using Mongoose.
-// It includes fields for email and password hash, with validation rules.
-// The model is exported for use in other parts of the application.
 // user.js
+// Project: nodejs-express-mongodb-jwt
 
 const mongoose = require('mongoose');
 

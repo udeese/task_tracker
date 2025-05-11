@@ -4,62 +4,62 @@ import { useAuth }             from "../context/AuthContext";
 import { useNavigate }         from "react-router-dom";
 
 export default function Tasks() {
-  const [tasks, setTasks] = useState([]);
-  const [text, setText]   = useState('');
-  const { token, logout } = useAuth();
-  const navigate          = useNavigate();
+const [tasks, setTasks] = useState([]);
+const [text, setText]   = useState('');
+const { token, logout } = useAuth();
+const navigate          = useNavigate();
 
-  useEffect(() => {
-  
+useEffect(() => {
+
     if (!token) {
-      return navigate('/login', { replace: true });
+    return navigate('/login', { replace: true });
     }
-   
+
     api.get('/tasks')
-      .then(res => setTasks(res.data))
-      .catch(err => {
+    .then(res => setTasks(res.data))
+    .catch(err => {
         console.error(err);
         
-      });
-  }, [token, navigate]);
+    });
+}, [token, navigate]);
 
-  async function addTask(e) {
+async function addTask(e) {
     e.preventDefault();
     await api.post('/tasks', { text });
     setText('');
     const res = await api.get('/tasks');
     setTasks(res.data);
-  }
+}
 
 
-  return (
+return (
     <div>
-      <button onClick={() => { logout(); navigate('/login'); }}>
+    <button onClick={() => { logout(); navigate('/login'); }}>
         Log Out
-      </button>
-      <h1>Your Tasks</h1>
-      <form onSubmit={addTask}>
+    </button>
+    <h1>Your Tasks</h1>
+    <form onSubmit={addTask}>
         <input
-          value={text}
-          onChange={e => setText(e.target.value)}
-          placeholder="New task"
-          required
+        value={text}
+        onChange={e => setText(e.target.value)}
+        placeholder="New task"
+        required
         />
         <button type="submit">Add</button>
-      </form>
-      <ul>
+    </form>
+    <ul>
         {tasks.map(t => (
-          <li key={t._id}>
+        <li key={t._id}>
             <input
-              type="checkbox"
-              checked={t.completed}
-              onChange={e => toggle(t._id, e.target.checked)}
+            type="checkbox"
+            checked={t.completed}
+            onChange={e => toggle(t._id, e.target.checked)}
             />
             <span>{t.text}</span>
             <button onClick={() => remove(t._id)}>×</button>
-          </li>
+        </li>
         ))}
-      </ul>
+    </ul>
     </div>
-  );
+);
 }

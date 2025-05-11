@@ -1,4 +1,5 @@
 // Project: nodejs-express-mongodb-jwt
+// File: middleware/auth.js
 
 const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'change_this_to_strong';

@@ -4,86 +4,85 @@ document.addEventListener('DOMContentLoaded', () => {
     const form  = document.getElementById('task-form');
     const input = document.getElementById('task-input');
     const list  = document.getElementById('tasks');
-  
-    // Helper to get the Authorization header
+
+// Helper to get the Authorization header
     function authHeader() {
-      const token = localStorage.getItem('authToken');
-      return token ? { 'Authorization': `Bearer ${token}` } : {};
+    const token = localStorage.getItem('authToken');
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
     }
-  
-    // Fetch & render all tasks
+
+// Fetch & render all tasks
     async function fetchTasks() {
-      try {
+    try {
         const res = await fetch('/api/tasks', {
-          headers: { ...authHeader() }
+        headers: { ...authHeader() }
         });
         if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
         const tasks = await res.json();
         list.innerHTML = tasks.map(t => `
-          <li data-id="${t._id}">
+        <li data-id="${t._id}">
             <input type="checkbox" ${t.completed ? 'checked' : ''}/>
             <span>${t.text}</span>
             <button class="del">×</button>
-          </li>
+        </li>
         `).join('');
-      } catch (err) {
+    } catch (err) {
         console.error(err);
         // optionally show an error message in the UI
-      }
     }
-  
+    }
+
     // Add a new task
     form.addEventListener('submit', async e => {
-      e.preventDefault();
-      if (!input.value.trim()) return;
-      try {
+    e.preventDefault();
+    if (!input.value.trim()) return;
+    try {
         const res = await fetch('/api/tasks', {
-          method: 'POST',
-          headers: {
+        method: 'POST',
+        headers: {
             'Content-Type': 'application/json',
             ...authHeader()
-          },
-          body: JSON.stringify({ text: input.value })
+        },
+        body: JSON.stringify({ text: input.value })
         });
         if (!res.ok) throw new Error(`Add failed: ${res.status}`);
         input.value = '';
         await fetchTasks();
-      } catch (err) {
+    } catch (err) {
         console.error(err);
-      }
+    }
     });
-  
+
     // Handle checkbox toggle & delete
     list.addEventListener('click', async e => {
-      const li = e.target.closest('li');
-      if (!li) return;
-      const id = li.dataset.id;
-  
-      try {
+    const li = e.target.closest('li');
+    if (!li) return;
+    const id = li.dataset.id;
+
+    try {
         if (e.target.classList.contains('del')) {
-          const res = await fetch(`/api/tasks/${id}`, {
+        const res = await fetch(`/api/tasks/${id}`, {
             method: 'DELETE',
             headers: authHeader()
-          });
-          if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
+        });
+        if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
         } else if (e.target.type === 'checkbox') {
-          const res = await fetch(`/api/tasks/${id}`, {
+        const res = await fetch(`/api/tasks/${id}`, {
             method: 'PUT',
             headers: {
-              'Content-Type': 'application/json',
-              ...authHeader()
+            'Content-Type': 'application/json',
+            ...authHeader()
             },
             body: JSON.stringify({ completed: e.target.checked })
-          });
-          if (!res.ok) throw new Error(`Update failed: ${res.status}`);
+        });
+        if (!res.ok) throw new Error(`Update failed: ${res.status}`);
         }
         await fetchTasks();
-      } catch (err) {
+    } catch (err) {
         console.error(err);
-      }
+    }
     });
-  
+
     // Initial load
     fetchTasks();
-  });
-  
+});
